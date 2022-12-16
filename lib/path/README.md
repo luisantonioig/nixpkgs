@@ -1,4 +1,4 @@
-# Path library design
+# Path library
 
 This document explains why the `lib.path` library is designed the way it is.
 

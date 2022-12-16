@@ -38,7 +38,7 @@ let
           The given string "${value}" contains a `..` component, which is not allowed in subpaths''
     else true;
 
-  # Splits and normalises a subpath string into its components.
+  # Splits and normalises a relative path string into its components.
   # Errors for ".." components and doesn't include "." components
   splitRelPath = path:
     let

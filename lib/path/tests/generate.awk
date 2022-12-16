@@ -1,17 +1,15 @@
-# AWK script to generate random path-like strings, separated by null characters
-# Customizable variables are (all default to 0):
-# - seed: Specifies the deterministic random seed to use for generation
-# - count: The number of paths to generate
-# - extradotweight: Gives extra weight to dots being generated
-# - extraslashweight: Gives extra weight to slashes being generated
-# - extranullweight: Gives extra weight to null being generated,
-#   therefore making paths shorter
+# Generate random path-like strings, separated by null characters.
 #
-# Can be called with
+# Invocation:
 #
-#     awk -f ./generate.awk -v <variable>=<value> \
-#       | tr '\0' '\n'
+#     awk -f ./generate.awk -v <variable>=<value> | tr '\0' '\n'
 #
+# Customizable variables (all default to 0):
+# - seed: Deterministic random seed to use for generation
+# - count: Number of paths to generate
+# - extradotweight: Give extra weight to dots being generated
+# - extraslashweight: Give extra weight to slashes being generated
+# - extranullweight: Give extra weight to null being generated, making paths shorter
 BEGIN {
   # Seed for reproducibility
   srand(seed)

@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 
-# This file implements property tests for the lib/path/default.nix functions.
-# It generates a lot of random path-like strings and runs the functions on
-# them, checking that the expected laws of the functions hold
+# Property tests for the `lib.path` library
 #
-# This file depends on ./generate.awk for random generation
-# and ./normalise.nix for applying the functions to the generated paths
+# It generates random path-like strings and runs the functions on
+# them, checking that the expected laws of the functions hold
+
 set -euo pipefail
 shopt -s inherit_errexit
 
+# https://stackoverflow.com/a/246128
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 if test -z "${TEST_LIB:-}"; then
-  TEST_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."; pwd)"
+    TEST_LIB=$SCRIPT_DIR/../..
 fi
 
 tmp="$(mktemp -d)"
 clean_up() {
-  rm -rf "$tmp"
+    rm -rf "$tmp"
 }
 trap clean_up EXIT
 mkdir -p "$tmp/work"
@@ -29,15 +31,15 @@ echo >&2 "Using seed $seed, use \`lib/path/tests/prop.sh $seed\` to reproduce th
 # be fast enough while still generating enough variety to detect bugs.
 count=500
 
-# Set this to 1 or 2 to enable debug output
 debug=0
+# debug=1 # print some extra info
+# debug=2 # print generated values
 
-# Fine tuning of the path generator in ./generate.awk
-# These values were chosen to balance the number of generated invalid paths
-# to the variance in generated paths. Set debug=2 just above to see the paths
-extradotweight=64   # The larger this value, the more dots are generated
-extraslashweight=64 # The larger this value, the more slashes are generated
-extranullweight=16  # The larger this value, the shorter the generated strings
+# Fine tuning parameters to balance the number of generated invalid paths
+# to the variance in generated paths.
+extradotweight=64   # Larger value: more dots
+extraslashweight=64 # Larger value: more slashes
+extranullweight=16  # Larger value: shorter strings
 
 die() {
     echo >&2 "test case failed: " "$@"
@@ -48,15 +50,15 @@ if [[ "$debug" -ge 1 ]]; then
     echo >&2 "Generating $count random path-like strings"
 fi
 
-# The awk script generates a stream of null-terminated path-like strings
-# We read entry-by-entry into bash write it to a file and the strings array
+# Read stream of null-terminated strings entry-by-entry into bash,
+# write it to a file and the `strings` array.
 declare -a strings=()
 mkdir -p "$tmp/strings"
 while IFS= read -r -d $'\0' str; do
     echo -n "$str" > "$tmp/strings/${#strings[@]}"
     strings+=("$str")
 done < <(awk \
-    -f "$TEST_LIB"/path/tests/generate.awk \
+    -f "$SCRIPT_DIR"/generate.awk \
     -v seed="$seed" \
     -v count="$count" \
     -v extradotweight="$extradotweight" \
@@ -70,9 +72,9 @@ fi
 # Precalculate all normalisations with a single Nix call. Calling Nix for each
 # string individually would take way too long
 nix-instantiate --eval --strict --json \
-    --arg libpath "$TEST_LIB" \
-    --arg stringsDir "$tmp/strings" \
-    "$TEST_LIB"/path/tests/normalise.nix \
+    --argstr libpath "$TEST_LIB" \
+    --argstr dir "$tmp/strings" \
+    "$SCRIPT_DIR"/normalise.nix \
     >"$tmp/result.json"
 
 # Uses some jq magic to turn the resulting attribute set into an associative
@@ -88,7 +90,7 @@ declare -A normalised_result="($(jq '
 # For invalid subpaths, returns 1
 normalise() {
     local str=$1
-    # Uses the same check for validity as in ../path.nix
+    # Uses the same check for validity as in the library implementation
     if [[ "$str" == "" || "$str" == /* || "$str" =~ ^(.*/)?\.\.(/.*)?$ ]]; then
         valid=
     else
@@ -96,7 +98,7 @@ normalise() {
     fi
 
     normalised=${normalised_result[$str]}
-    # An empty string indicates failure, this is encoded in ./pathNormalise.nix
+    # An empty string indicates failure, this is encoded in ./normalise.nix
     if [[ -n "$normalised" ]]; then
         if [[ -n "$valid" ]]; then
             echo "$normalised"
